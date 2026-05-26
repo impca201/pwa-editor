@@ -75,10 +75,21 @@ function getManifestDefaults(callback) {
       return;
     } catch (e) {}
   }
-  fetch(href)
+  var called = false;
+  function done(defaults) {
+    if (called) return;
+    called = true;
+    callback(defaults);
+  }
+  var controller = new AbortController();
+  var timer = setTimeout(function() {
+    controller.abort();
+    done(detectFromPage());
+  }, 3000);
+  fetch(href, { signal: controller.signal })
     .then(function(r) { return r.json(); })
-    .then(function(m) { callback(manifestJsonToDefaults(m)); })
-    .catch(function() { callback(detectFromPage()); });
+    .then(function(m) { clearTimeout(timer); done(manifestJsonToDefaults(m)); })
+    .catch(function() { clearTimeout(timer); done(detectFromPage()); });
 }
 
 function escapeAttr(str) {
