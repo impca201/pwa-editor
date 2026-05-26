@@ -104,18 +104,12 @@ function escapeAttr(str) {
 }
 
 function showManifestOptionsDialog(defaults, callback) {
-  var existingOverlay = document.getElementById('pwa-anywhere-overlay');
-  if (existingOverlay) existingOverlay.remove();
-  var existingDialog = document.getElementById('pwa-anywhere-dialog');
-  if (existingDialog) existingDialog.remove();
+  var existing = document.getElementById('pwa-anywhere-dialog');
+  if (existing) existing.remove();
 
-  var overlay = document.createElement('div');
-  overlay.id = 'pwa-anywhere-overlay';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:2147483646;';
-
-  var dialog = document.createElement('div');
+  var dialog = document.createElement('dialog');
   dialog.id = 'pwa-anywhere-dialog';
-  dialog.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483647;padding:0;border-radius:10px;box-shadow:0 6px 32px rgba(0,0,0,.4);background:#fff;color:#111;font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;max-width:480px;width:min(90vw,480px);max-height:90vh;overflow-y:auto;';
+  dialog.style.cssText = 'padding:0;border:none;border-radius:10px;box-shadow:0 6px 32px rgba(0,0,0,.4);background:#fff;color:#111;font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;max-width:480px;width:min(90vw,480px);overflow:auto;';
 
   var fields = [
     {
@@ -195,21 +189,7 @@ function showManifestOptionsDialog(defaults, callback) {
     +   '</div>'
     + '</form>';
 
-  document.body.appendChild(overlay);
   document.body.appendChild(dialog);
-
-  function closeDialog() {
-    overlay.remove();
-    dialog.remove();
-    document.removeEventListener('keydown', onKeyDown);
-  }
-
-  function onKeyDown(e) {
-    if (e.key === 'Escape') closeDialog();
-  }
-
-  document.addEventListener('keydown', onKeyDown);
-  overlay.addEventListener('click', closeDialog);
 
   ['pwa-theme-color', 'pwa-bg-color'].forEach(function(id) {
     var input = dialog.querySelector('#' + id);
@@ -219,7 +199,9 @@ function showManifestOptionsDialog(defaults, callback) {
     }
   });
 
-  dialog.querySelector('#pwa-cancel').addEventListener('click', closeDialog);
+  dialog.querySelector('#pwa-cancel').addEventListener('click', function() {
+    dialog.remove();
+  });
 
   dialog.querySelector('#pwa-form').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -233,9 +215,20 @@ function showManifestOptionsDialog(defaults, callback) {
       start_url:        dialog.querySelector('#pwa-start-url').value,
       scope:            dialog.querySelector('#pwa-scope').value,
     };
-    closeDialog();
+    dialog.remove();
     callback(opts);
   });
+
+  try {
+    dialog.showModal();
+  } catch (e) {
+    dialog.style.position = 'fixed';
+    dialog.style.top = '50%';
+    dialog.style.left = '50%';
+    dialog.style.transform = 'translate(-50%,-50%)';
+    dialog.style.zIndex = '2147483647';
+    dialog.style.display = 'block';
+  }
 }
 
 function createAndInjectManifest(opts) {
