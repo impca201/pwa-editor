@@ -92,154 +92,6 @@ function getManifestDefaults(callback) {
     .catch(function() { clearTimeout(timer); done(detectFromPage()); });
 }
 
-function escapeAttr(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function showManifestOptionsDialog(defaults, callback) {
-  var oldHost = document.getElementById('pwa-anywhere-host');
-  if (oldHost) oldHost.remove();
-
-  // Attach to documentElement via shadow DOM — bypasses SPA body monitoring (e.g. Gmail)
-  var host = document.createElement('div');
-  host.id = 'pwa-anywhere-host';
-  document.documentElement.appendChild(host);
-  var shadow = host.attachShadow({ mode: 'open' });
-
-  var fields = [
-    {
-      id: 'pwa-name', label: 'Name', type: 'text', value: defaults.name,
-      hint: 'Full app name shown in launcher &amp; install prompt, e.g. "My Dashboard"',
-    },
-    {
-      id: 'pwa-short-name', label: 'Short name', type: 'text', value: defaults.short_name,
-      hint: 'Truncated label for tight spaces like home screen icons (≤ 15 chars), e.g. "Dashboard"',
-    },
-    {
-      id: 'pwa-display', label: 'Display mode', type: 'select',
-      options: [
-        { value: 'standalone', label: 'standalone — own window, no browser UI (recommended)' },
-        { value: 'fullscreen', label: 'fullscreen — hides all OS/browser chrome' },
-        { value: 'minimal-ui', label: 'minimal-ui — small back/reload buttons only' },
-        { value: 'browser',    label: 'browser — opens in a normal browser tab' },
-      ],
-      value: defaults.display,
-      hint: 'Controls how the app window looks when launched from the home screen',
-    },
-    {
-      id: 'pwa-theme-color', label: 'Theme color', type: 'color', value: defaults.theme_color,
-      hint: 'Browser title-bar / mobile status-bar accent colour, e.g. #1a73e8',
-    },
-    {
-      id: 'pwa-bg-color', label: 'Background color', type: 'color', value: defaults.background_color,
-      hint: 'Splash screen background shown while the app is loading, e.g. #ffffff',
-    },
-    {
-      id: 'pwa-icon', label: 'Icon URL', type: 'text', value: defaults.icon_url,
-      hint: 'Direct URL to the app icon; PNG ≥ 192 × 192 px recommended. Leave blank to auto-detect.',
-    },
-    {
-      id: 'pwa-start-url', label: 'Start URL', type: 'text', value: defaults.start_url,
-      hint: 'URL opened when launching the installed PWA, e.g. https://example.com/app',
-    },
-    {
-      id: 'pwa-scope', label: 'Scope', type: 'text', value: defaults.scope,
-      hint: 'URL prefix treated as "in-app"; links outside this scope open in the browser, e.g. https://example.com/app/',
-    },
-  ];
-
-  var fieldsHtml = fields.map(function(f) {
-    var inputHtml;
-    if (f.type === 'select') {
-      inputHtml = '<select id="' + f.id + '">';
-      f.options.forEach(function(o) {
-        inputHtml += '<option value="' + o.value + '"' + (o.value === f.value ? ' selected' : '') + '>' + o.label + '</option>';
-      });
-      inputHtml += '</select>';
-    } else if (f.type === 'color') {
-      inputHtml = '<div class="color-wrap">'
-        + '<input type="color" id="' + f.id + '" value="' + escapeAttr(f.value) + '">'
-        + '<span id="' + f.id + '-hex">' + escapeAttr(f.value) + '</span>'
-        + '</div>';
-    } else {
-      inputHtml = '<input type="text" id="' + f.id + '" value="' + escapeAttr(f.value) + '">';
-    }
-    return '<div class="field">'
-      + '<label for="' + f.id + '">' + f.label + '</label>'
-      + inputHtml
-      + '<small>' + f.hint + '</small>'
-      + '</div>';
-  }).join('');
-
-  shadow.innerHTML = '<style>'
-    + ':host{all:initial}'
-    + '*{box-sizing:border-box;font-family:system-ui,sans-serif}'
-    + '#overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2147483647;display:flex;align-items:center;justify-content:center}'
-    + '#modal{background:#fff;color:#111;border-radius:10px;box-shadow:0 6px 32px rgba(0,0,0,.4);max-width:480px;width:min(90vw,480px);max-height:90vh;overflow:auto;font-size:14px;line-height:1.5}'
-    + '#hdr{padding:20px 22px 18px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;border-radius:10px 10px 0 0}'
-    + '#hdr .title{font-weight:700;font-size:16px;color:#111}'
-    + '#hdr .host{font-size:12px;color:#888;margin-top:2px}'
-    + 'form{display:flex;flex-direction:column;gap:12px;padding:18px 22px}'
-    + '.field{display:flex;flex-direction:column;gap:4px}'
-    + 'label{font-weight:600;font-size:13px;color:#333}'
-    + 'input[type=text],select{width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;color:#111;background:#fff}'
-    + '.color-wrap{display:flex;align-items:center;gap:10px}'
-    + 'input[type=color]{width:48px;height:34px;padding:2px 3px;border:1px solid #ccc;border-radius:5px;cursor:pointer;background:#fff}'
-    + '.color-wrap span{font-size:12px;color:#555;font-family:monospace}'
-    + 'small{color:#888;font-size:11px}'
-    + '.actions{display:flex;justify-content:flex-end;gap:8px;padding-top:6px;border-top:1px solid #eee;margin-top:4px}'
-    + 'button{padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer}'
-    + '#pwa-cancel{border:1px solid #ccc;background:#f5f5f5;color:#444}'
-    + 'button[type=submit]{border:none;background:#1a73e8;color:#fff;font-weight:600}'
-    + '</style>'
-    + '<div id="overlay">'
-    +   '<div id="modal">'
-    +     '<div id="hdr"><div class="title">📱 PWA Manifest Options</div><div class="host">' + location.hostname + '</div></div>'
-    +     '<form id="pwa-form">'
-    +       fieldsHtml
-    +       '<div class="actions">'
-    +         '<button type="button" id="pwa-cancel">Cancel</button>'
-    +         '<button type="submit">Apply</button>'
-    +       '</div>'
-    +     '</form>'
-    +   '</div>'
-    + '</div>';
-
-  ['pwa-theme-color', 'pwa-bg-color'].forEach(function(id) {
-    var input = shadow.querySelector('#' + id);
-    var hexLabel = shadow.querySelector('#' + id + '-hex');
-    if (input && hexLabel) {
-      input.addEventListener('input', function() { hexLabel.textContent = input.value; });
-    }
-  });
-
-  function close() { host.remove(); }
-
-  shadow.querySelector('#overlay').addEventListener('click', function(e) {
-    if (e.target === this) close();
-  });
-  shadow.querySelector('#pwa-cancel').addEventListener('click', close);
-  shadow.querySelector('#pwa-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    var opts = {
-      name:             shadow.querySelector('#pwa-name').value,
-      short_name:       shadow.querySelector('#pwa-short-name').value || undefined,
-      display:          shadow.querySelector('#pwa-display').value,
-      theme_color:      shadow.querySelector('#pwa-theme-color').value,
-      background_color: shadow.querySelector('#pwa-bg-color').value,
-      icon_url:         shadow.querySelector('#pwa-icon').value,
-      start_url:        shadow.querySelector('#pwa-start-url').value,
-      scope:            shadow.querySelector('#pwa-scope').value,
-    };
-    close();
-    callback(opts);
-  });
-}
-
 function makeManifestElem(href) {
   var el = document.createElement('link');
   el.rel = 'manifest';
@@ -271,11 +123,45 @@ function removeCurrentManifest() {
   if (el) el.parentElement.removeChild(el);
 }
 
+var DISPLAY_MODES = ['standalone', 'fullscreen', 'minimal-ui', 'browser'];
+
 function setCustomManifest() {
-  getManifestDefaults(function(defaults) {
-    showManifestOptionsDialog(defaults, function(opts) {
-      removeCurrentManifest();
-      injectManifest(opts);
+  getManifestDefaults(function(d) {
+    var name = prompt('App name:', d.name);
+    if (name === null) return;
+
+    var shortName = prompt('Short name (≤15 chars):', d.short_name);
+    if (shortName === null) return;
+
+    var display = prompt('Display mode (standalone / fullscreen / minimal-ui / browser):', d.display);
+    if (display === null) return;
+    if (DISPLAY_MODES.indexOf(display) < 0) display = 'standalone';
+
+    var themeColor = prompt('Theme color (hex):', d.theme_color);
+    if (themeColor === null) return;
+
+    var bgColor = prompt('Background color (hex):', d.background_color);
+    if (bgColor === null) return;
+
+    var iconUrl = prompt('Icon URL:', d.icon_url);
+    if (iconUrl === null) return;
+
+    var startUrl = prompt('Start URL:', d.start_url);
+    if (startUrl === null) return;
+
+    var scope = prompt('Scope:', d.scope);
+    if (scope === null) return;
+
+    removeCurrentManifest();
+    injectManifest({
+      name:             name,
+      short_name:       shortName || undefined,
+      display:          display,
+      theme_color:      themeColor || undefined,
+      background_color: bgColor || undefined,
+      icon_url:         iconUrl,
+      start_url:        startUrl,
+      scope:            scope,
     });
   });
 }
