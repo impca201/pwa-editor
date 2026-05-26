@@ -8,57 +8,12 @@
 // @description Allow installing any webpage as a progressive web app
 // @run-at      document-idle
 // @grant       GM_registerMenuCommand
-// @grant       GM_unregisterMenuCommand
 // @downloadURL https://update.greasyfork.org/scripts/490784/PWAs%20Anywhere.user.js
 // @updateURL https://update.greasyfork.org/scripts/490784/PWAs%20Anywhere.meta.js
 // ==/UserScript==
 
-var originalManifest = document.querySelector('link[rel="manifest"]');
-
-var menuEntries = {
-  reinjectDefault : ['📜️ Reinject Default Manifest', reinjectOriginalManifest],
-  injectCustom    : ['📃️ Force Inject Custom Manifest', removeManifestAndInjectCustom],
-  reinjectCustom  : ['📃️ Force Reinject Custom Manifest', removeManifestAndInjectCustom],
-  removeDefault   : ['🚮️ Remove Current Manifest (Default)', removeCurrentManifest],
-  removeCustom    : ['🚮️ Remove Current Manifest (Custom)', removeCurrentManifest],
-};
-
-function clearMenu() {
-  for (var entry of Object.values(menuEntries)) {
-    GM_unregisterMenuCommand(entry[0]);
-  }
-}
-
-function menuRegister(key) {
-  var entry = menuEntries[key];
-  GM_registerMenuCommand(entry[0], entry[1]);
-}
-
-function makeManifestElem(href) {
-  var manifestElem = document.createElement('link');
-  manifestElem.rel = 'manifest';
-  manifestElem.href = href;
-  return manifestElem;
-}
-
-function removeCurrentManifest() {
-  var manifestElem = document.querySelector('link[rel="manifest"]');
-  if (manifestElem) {
-    manifestElem.parentElement.removeChild(manifestElem);
-  }
-  clearMenu();
-  if (originalManifest) {
-    menuRegister('reinjectDefault');
-  }
-  menuRegister('reinjectCustom');
-}
-
-function reinjectOriginalManifest() {
-  document.head.appendChild(makeManifestElem(originalManifest));
-  clearMenu();
-  menuRegister('reinjectCustom');
-  menuRegister('removeDefault');
-}
+GM_registerMenuCommand('📃 Set Custom Manifest', setCustomManifest);
+GM_registerMenuCommand('🚮 Remove Custom Manifest', removeCustomManifest);
 
 function toHexColor(str) {
   if (!str) return null;
@@ -75,7 +30,7 @@ function toHexColor(str) {
   return null;
 }
 
-function detectManifestOptions() {
+function detectFromPage() {
   var descElem = document.querySelector('meta[name="description"]');
   var iconElem = document.querySelector('link[rel~="apple-touch-icon"]') || document.querySelector('link[rel~="icon"]');
   var themeElem = document.querySelector('meta[name="theme-color"]');
@@ -93,6 +48,41 @@ function detectManifestOptions() {
     scope:            location.href,
     description:      (descElem && descElem.content) || '',
   };
+}
+
+function manifestJsonToDefaults(m) {
+  var page = detectFromPage();
+  return {
+    name:             m.name             || page.name,
+    short_name:       m.short_name       || page.short_name,
+    display:          m.display          || 'standalone',
+    theme_color:      toHexColor(m.theme_color)      || page.theme_color,
+    background_color: toHexColor(m.background_color) || page.background_color,
+    icon_url:         (m.icons && m.icons[0] && m.icons[0].src) || page.icon_url,
+    start_url:        m.start_url        || page.start_url,
+    scope:            m.scope            || page.scope,
+    description:      m.description      || page.description,
+  };
+}
+
+function getManifestDefaults(callback) {
+  var link = document.querySelector('link[rel="manifest"]');
+  if (!link) {
+    callback(detectFromPage());
+    return;
+  }
+  var href = link.getAttribute('href');
+  if (href.startsWith('data:')) {
+    try {
+      var json = decodeURIComponent(href.split(',')[1] || '');
+      callback(manifestJsonToDefaults(JSON.parse(json)));
+      return;
+    } catch (e) {}
+  }
+  fetch(href)
+    .then(function(r) { return r.json(); })
+    .then(function(m) { callback(manifestJsonToDefaults(m)); })
+    .catch(function() { callback(detectFromPage()); });
 }
 
 function escapeAttr(str) {
@@ -231,7 +221,14 @@ function showManifestOptionsDialog(defaults, callback) {
   }
 }
 
-function createAndInjectManifest(opts) {
+function makeManifestElem(href) {
+  var el = document.createElement('link');
+  el.rel = 'manifest';
+  el.href = href;
+  return el;
+}
+
+function injectManifest(opts) {
   var iconUrl = opts.icon_url || (location.origin + '/favicon.ico');
   var manifest = {
     name:             opts.name || document.title || location.href,
@@ -243,30 +240,31 @@ function createAndInjectManifest(opts) {
     theme_color:      opts.theme_color || undefined,
     background_color: opts.background_color || undefined,
     lang:             document.documentElement.lang || undefined,
-    icons: [{
-      src:     iconUrl,
-      sizes:   'any',
-      purpose: 'any',
-    }],
+    icons: [{ src: iconUrl, sizes: 'any', purpose: 'any' }],
   };
   document.head.appendChild(makeManifestElem(
     'data:application/manifest+json;utf8,' + encodeURIComponent(JSON.stringify(manifest))
   ));
-  menuRegister('reinjectCustom');
-  menuRegister('removeCustom');
 }
 
-function removeManifestAndInjectCustom() {
-  removeCurrentManifest();
-  showManifestOptionsDialog(detectManifestOptions(), function(opts) {
-    createAndInjectManifest(opts);
+function removeCurrentManifest() {
+  var el = document.querySelector('link[rel="manifest"]');
+  if (el) el.parentElement.removeChild(el);
+}
+
+function setCustomManifest() {
+  getManifestDefaults(function(defaults) {
+    showManifestOptionsDialog(defaults, function(opts) {
+      removeCurrentManifest();
+      injectManifest(opts);
+    });
   });
 }
 
-if (originalManifest) {
-  originalManifest = originalManifest.getAttribute('href');
-  menuRegister('injectCustom');
-  menuRegister('removeDefault');
-} else {
-  createAndInjectManifest(detectManifestOptions());
+function removeCustomManifest() {
+  removeCurrentManifest();
+}
+
+if (!document.querySelector('link[rel="manifest"]')) {
+  injectManifest(detectFromPage());
 }
