@@ -1,15 +1,11 @@
 // ==UserScript==
-// @name        PWAs Anywhere
-// @namespace   https://www.octt.eu.org/
+// @name        PWA Manifest Editor
 // @match       *://*/*
 // @version     2.0.0
-// @author      OctoSpacc
 // @license     ISC
-// @description Allow installing any webpage as a progressive web app
+// @description Edit PWA Manifest
 // @run-at      document-idle
 // @grant       GM_registerMenuCommand
-// @downloadURL https://update.greasyfork.org/scripts/490784/PWAs%20Anywhere.user.js
-// @updateURL https://update.greasyfork.org/scripts/490784/PWAs%20Anywhere.meta.js
 // ==/UserScript==
 
 GM_registerMenuCommand('📃 Set Custom Manifest', setCustomManifest);
