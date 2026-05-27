@@ -1,0 +1,24 @@
+{
+   "action": {
+      "default_popup": "popup/index.html",
+      "default_title": "PWA Scope Fixer"
+   },
+   "content_scripts": [ {
+      "js": [ "content.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_start"
+   } ],
+   "description": "Fix PWA address bar issues by injecting a custom manifest. Customize app name, scope, colors, and force standalone mode easily.",
+   "icons": {
+      "128": "icons/icon128.png",
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6s+HPYu4UrJ5Ow7pSHSTihruBtMVKSPgUcEiEyZ5G3BAT11B0GFkfHEOFk4zqvUh+pfNvSE1aqn9Z/3DjpJpI3FtkoX639HFXXSs2TBRL/E4iDLYXMfw9xsvIEVHhEhlb75Qw/vlOZZcNEX4OUmg7JIbe6rmGXLA85e/jZRWgsy4wFhmYsd/RfJAesRwfx6W5+TJHjQlbQaHjBwZuo6I0q/2HbnjsK4y7smRTGWVKlt9Ypo39Qbg7kfXoKjDPj5i53Qb8T+79gvVRalEigC7jqY1LuVBjQZQKKWzc/y2a6dpm2X+3z5toQySA8WSAiuo56deYoFODMKOvm3rR9ur6wIDAQAB",
+   "manifest_version": 3,
+   "name": "PWA Scope Fixer",
+   "permissions": [ "activeTab", "scripting", "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.2.0"
+}
